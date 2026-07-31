@@ -1,0 +1,53 @@
+import numpy as np
+
+class ThreeFactorSTDP:
+    """
+    Implementation of 3-Factor STDP (Spike-Timing-Dependent Plasticity)
+    incorporating global neuromodulatory eligibility traces (Dopamine signal).
+    Targeted for bio-inspired continuous learning architectures.
+    """
+    def __init__(self, tau_c=40.0, tau_d=20.0, learning_rate=0.05):
+        self.tau_c = tau_c          # Decay time constant for eligibility trace (ms)
+        self.tau_d = tau_d          # Decay time constant for dopamine reward (ms)
+        self.lr = learning_rate     # Global learning rate multiplier
+        
+        self.eligibility_trace = 0.0
+        self.dopamine_level = 0.0
+
+    def update_trace(self, stdp_delta):
+        """Updates the eligibility trace when local pre/post spike events occur."""
+        self.eligibility_trace += stdp_delta
+
+    def inject_dopamine(self, reward_signal):
+        """Simulates global dopamine release upon environmental reward/error signal."""
+        self.dopamine_level += reward_signal
+
+    def step(self, dt=0.1):
+        """
+        Integrates differential equations for synaptic weight modification over time dt.
+        Returns the delta weight (dw) to be applied to the target synapse.
+        """
+        # Weight update is proportional to the trace AND dopamine presence
+        dw = self.lr * self.eligibility_trace * self.dopamine_level * dt
+        
+        # Exponential decay of traces over time
+        self.eligibility_trace -= (self.eligibility_trace / self.tau_c) * dt
+        self.dopamine_level -= (self.dopamine_level / self.tau_d) * dt
+        
+        return dw
+
+if __name__ == "__main__":
+    synapse_learning = ThreeFactorSTDP()
+    
+    # Simulate a spike event (Pre before Post -> Positive STDP event)
+    synapse_learning.update_trace(stdp_delta=0.8)
+    
+    # Simulate time pass without reward
+    dw_no_reward = synapse_learning.step(dt=1.0)
+    
+    # Global dopamine reward arrives 5ms later
+    synapse_learning.inject_dopamine(reward_signal=1.5)
+    dw_with_reward = synapse_learning.step(dt=1.0)
+    
+    print(f"Weight Change without Dopamine: {dw_no_reward:.6f}")
+    print(f"Weight Change WITH Dopamine Reward: {dw_with_reward:.6f}")
