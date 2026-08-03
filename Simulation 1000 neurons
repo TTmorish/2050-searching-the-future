@@ -60,6 +60,9 @@ for t in range(sim_time):
     v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)  # Two-step numerical stability
     u += a * (b * v - u)
 
+
+
+
 # Convert recorded firings to a NumPy array
 firings = np.array(firings)
 
