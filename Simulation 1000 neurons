@@ -1,0 +1,87 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ==========================================
+# 1. CONFIGURACIÓN DEL CONECTOMA Y RED
+# ==========================================
+Ne = 800   # Neuronas Excitadoras (Corteza)
+Ni = 200   # Neuronas Inhibidoras (Regulación)
+N = Ne + Ni
+
+# Parámetros aleatorios para diversidad neuronal (Diferentes tipos de disparo)
+re = np.random.rand(Ne)
+ri = np.random.rand(Ni)
+
+# Parámetros del modelo de Izhikevich
+# a: velocidad de recuperación | b: sensibilidad de sub-umbral
+# c: voltaje de reseteo | d: reajuste de la variable de recuperación
+a = np.hstack((0.02 * np.ones(Ne), 0.02 + 0.08 * ri))
+b = np.hstack((0.20 * np.ones(Ne), 0.25 - 0.05 * ri))
+c = np.hstack((-65 + 15 * re**2, -65 * np.ones(Ni)))
+d = np.hstack((8 - 6 * re**2, 2 * np.ones(Ni)))
+
+# Matriz de Conectoma / Pesos Sinápticos (S)
+# Las conexiones excitadoras impulsan (+), las inhibidoras frenan (-)
+S = np.hstack((0.5 * np.random.rand(N, Ne), -np.random.rand(N, Ni)))
+
+# Variables de estado iniciales
+v = -65 * np.ones(N)  # Voltaje de membrana inicial (mV)
+u = b * v             # Variable de recuperación de membrana
+
+# Almacenamiento de disparos (Spikes) para análisis
+firings = []
+
+# ==========================================
+# 2. BUCLE DE SIMULACIÓN TEMPORAL (1,000 ms = 1 Segundo)
+# ==========================================
+sim_time = 1000  # milisegundos
+
+for t in range(sim_time):
+    # Corriente de estimulación externa (Talamo / Estímulo sensorial)
+    I = np.hstack((5 * np.random.randn(Ne), 2 * np.random.randn(Ni)))
+    
+    # Identificar qué neuronas alcanzaron el umbral de disparo (>= 30 mV)
+    fired = np.where(v >= 30)[0]
+    
+    if len(fired) > 0:
+        # Registrar [tiempo, ID_neurona]
+        for f in fired:
+            firings.append([t, f])
+            
+        # Reseteo post-disparo
+        v[fired] = c[fired]
+        u[fired] = u[fired] + d[fired]
+        
+        # Propagación de impulsos a través del Conectoma (S)
+        I += np.sum(S[:, fired], axis=1)
+
+    # Integración Numérica (Ecuaciones Diferenciales de Izhikevich - Método de Euler)
+    v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)
+    v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)  # Doble paso para estabilidad
+    u += a * (b * v - u)
+
+# Convertir registro a matriz NumPy
+firings = np.array(firings)
+
+# ==========================================
+# 3. VISUALIZACIÓN NEUROCIENTÍFICA (Raster Plot)
+# ==========================================
+plt.figure(figsize=(12, 6))
+
+if len(firings) > 0:
+    # Separar neuronas excitadoras e inhibidoras por color
+    excitatory_mask = firings[:, 1] < Ne
+    
+    plt.scatter(firings[excitatory_mask, 0], firings[excitatory_mask, 1], 
+                s=1.5, c='crimson', label='Excitadoras (800)')
+    plt.scatter(firings[~excitatory_mask, 0], firings[~excitatory_mask, 1], 
+                s=1.5, c='navy', label='Inhibidoras (200)')
+
+plt.title('Simulación de Actividad Neuronal Biológica (Firma Cortical / Spikes)', fontsize=14)
+plt.xlabel('Tiempo (milisegundos)', fontsize=12)
+plt.ylabel('ID de la Neurona (0 a 1000)', fontsize=12)
+plt.xlim([0, sim_time])
+plt.ylim([0, N])
+plt.legend(loc='upper right')
+plt.grid(True, alpha=0.3)
+plt.show()
