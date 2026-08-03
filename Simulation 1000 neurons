@@ -2,84 +2,84 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ==========================================
-# 1. CONFIGURACIÓN DEL CONECTOMA Y RED
+# 1. CONNECTOME & NETWORK CONFIGURATION
 # ==========================================
-Ne = 800   # Neuronas Excitadoras (Corteza)
-Ni = 200   # Neuronas Inhibidoras (Regulación)
+Ne = 800   # Excitatory Neurons (Cortex)
+Ni = 200   # Inhibitory Neurons (Regulation)
 N = Ne + Ni
 
-# Parámetros aleatorios para diversidad neuronal (Diferentes tipos de disparo)
+# Random parameters for neuronal diversity (Different firing patterns)
 re = np.random.rand(Ne)
 ri = np.random.rand(Ni)
 
-# Parámetros del modelo de Izhikevich
-# a: velocidad de recuperación | b: sensibilidad de sub-umbral
-# c: voltaje de reseteo | d: reajuste de la variable de recuperación
+# Izhikevich model parameters
+# a: recovery time scale | b: sensitivity of the recovery variable
+# c: reset voltage       | d: reset of the recovery variable
 a = np.hstack((0.02 * np.ones(Ne), 0.02 + 0.08 * ri))
 b = np.hstack((0.20 * np.ones(Ne), 0.25 - 0.05 * ri))
 c = np.hstack((-65 + 15 * re**2, -65 * np.ones(Ni)))
 d = np.hstack((8 - 6 * re**2, 2 * np.ones(Ni)))
 
-# Matriz de Conectoma / Pesos Sinápticos (S)
-# Las conexiones excitadoras impulsan (+), las inhibidoras frenan (-)
+# Connectome Matrix / Synaptic Weights (S)
+# Excitatory connections drive (+), inhibitory connections suppress (-)
 S = np.hstack((0.5 * np.random.rand(N, Ne), -np.random.rand(N, Ni)))
 
-# Variables de estado iniciales
-v = -65 * np.ones(N)  # Voltaje de membrana inicial (mV)
-u = b * v             # Variable de recuperación de membrana
+# Initial state variables
+v = -65 * np.ones(N)  # Initial membrane voltage (mV)
+u = b * v             # Membrane recovery variable
 
-# Almacenamiento de disparos (Spikes) para análisis
+# Array to store firing events (Spikes) for analysis
 firings = []
 
 # ==========================================
-# 2. BUCLE DE SIMULACIÓN TEMPORAL (1,000 ms = 1 Segundo)
+# 2. TIME-STEP SIMULATION LOOP (1,000 ms = 1 Second)
 # ==========================================
-sim_time = 1000  # milisegundos
+sim_time = 1000  # milliseconds
 
 for t in range(sim_time):
-    # Corriente de estimulación externa (Talamo / Estímulo sensorial)
+    # External stimulation current (Thalamus / Sensory Input)
     I = np.hstack((5 * np.random.randn(Ne), 2 * np.random.randn(Ni)))
     
-    # Identificar qué neuronas alcanzaron el umbral de disparo (>= 30 mV)
+    # Identify which neurons reached the firing threshold (>= 30 mV)
     fired = np.where(v >= 30)[0]
     
     if len(fired) > 0:
-        # Registrar [tiempo, ID_neurona]
+        # Record [time, neuron_ID]
         for f in fired:
             firings.append([t, f])
             
-        # Reseteo post-disparo
+        # Post-spike reset
         v[fired] = c[fired]
         u[fired] = u[fired] + d[fired]
         
-        # Propagación de impulsos a través del Conectoma (S)
+        # Propagation of impulses through the Connectome (S)
         I += np.sum(S[:, fired], axis=1)
 
-    # Integración Numérica (Ecuaciones Diferenciales de Izhikevich - Método de Euler)
+    # Numerical Integration (Izhikevich Differential Equations - Euler's Method)
     v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)
-    v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)  # Doble paso para estabilidad
+    v += 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)  # Two-step numerical stability
     u += a * (b * v - u)
 
-# Convertir registro a matriz NumPy
+# Convert recorded firings to a NumPy array
 firings = np.array(firings)
 
 # ==========================================
-# 3. VISUALIZACIÓN NEUROCIENTÍFICA (Raster Plot)
+# 3. NEUROSCIENCE VISUALIZATION (Raster Plot)
 # ==========================================
 plt.figure(figsize=(12, 6))
 
 if len(firings) > 0:
-    # Separar neuronas excitadoras e inhibidoras por color
+    # Separate excitatory and inhibitory neurons by color
     excitatory_mask = firings[:, 1] < Ne
     
     plt.scatter(firings[excitatory_mask, 0], firings[excitatory_mask, 1], 
-                s=1.5, c='crimson', label='Excitadoras (800)')
+                s=1.5, c='crimson', label='Excitatory (800)')
     plt.scatter(firings[~excitatory_mask, 0], firings[~excitatory_mask, 1], 
-                s=1.5, c='navy', label='Inhibidoras (200)')
+                s=1.5, c='navy', label='Inhibitory (200)')
 
-plt.title('Simulación de Actividad Neuronal Biológica (Firma Cortical / Spikes)', fontsize=14)
-plt.xlabel('Tiempo (milisegundos)', fontsize=12)
-plt.ylabel('ID de la Neurona (0 a 1000)', fontsize=12)
+plt.title('Biological Neural Activity Simulation (Cortical Signature / Spikes)', fontsize=14)
+plt.xlabel('Time (milliseconds)', fontsize=12)
+plt.ylabel('Neuron ID (0 to 1000)', fontsize=12)
 plt.xlim([0, sim_time])
 plt.ylim([0, N])
 plt.legend(loc='upper right')
